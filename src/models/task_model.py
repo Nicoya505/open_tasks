@@ -10,5 +10,5 @@ class TaskModel(Base):
     id = Column(Integer(), primary_key=True)
     title = Column(String(50))
     description = Column(String(100))
-    status = Column(String(10))
+    status = Column(String(10), default="pending")
     created_at = Column(DateTime(), default=datetime.datetime.now())
