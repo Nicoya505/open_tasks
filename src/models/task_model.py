@@ -12,3 +12,4 @@ class TaskModel(Base):
     description = Column(String(100))
     status = Column(String(10), default="pending")
     created_at = Column(DateTime(), default=datetime.datetime.now())
+    

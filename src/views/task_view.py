@@ -1,5 +1,11 @@
+from services import TaskServices
+from models import TaskModel
+
+from config import Session
+
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 
 
 class Frame(tk.Frame):
@@ -8,10 +14,11 @@ class Frame(tk.Frame):
         self.root = root
         self.pack()
         
+        self.id_pelicula = None
         self.initialComponent()
         self.show_table()
+        self.disable_fields()
         
-    
     
     def initialComponent(self):
         
@@ -37,7 +44,7 @@ class Frame(tk.Frame):
         
         # Buttoms
         
-        self.btn_new = tk.Button(self, text="New")
+        self.btn_new = tk.Button(self, text="New", command=self.enable_fields)
         self.btn_new.config(
             width=20,
             font=("Arial", 12, "bold"),
@@ -48,7 +55,7 @@ class Frame(tk.Frame):
         )
         self.btn_new.grid(row=2, column=0, padx=10, pady=10)
         
-        self.btn_save = tk.Button(self, text="Save")
+        self.btn_save = tk.Button(self, text="Save", command=self.create_Task)
         self.btn_save.config(
             width=20,
             font=("Arial", 12, "bold"),
@@ -59,7 +66,7 @@ class Frame(tk.Frame):
         )
         self.btn_save.grid(row=2, column=1, padx=10, pady=10)
         
-        self.btn_cancel = tk.Button(self, text="Cancel")
+        self.btn_cancel = tk.Button(self, text="Cancel", command=self.disable_fields)
         self.btn_cancel.config(
             width=20,
             font=("Arial", 12, "bold"),
@@ -72,6 +79,11 @@ class Frame(tk.Frame):
         
     
     def show_table(self):
+        session = Session()
+        
+        tasks = TaskServices(session).get_tasks()
+        tasks.reverse()
+        
         self.table = ttk.Treeview(self, columns=("Title", "Description", "Status"))
         self.table.grid(row=3, column=0, columnspan=4, sticky="nse" )
         
@@ -79,7 +91,11 @@ class Frame(tk.Frame):
                                     orient="vertical",
                                     command=self.table.yview
                                     )
-        self.scroll.grid(row=3, column=4, sticky="nse")
+        self.scroll.grid(row=3,
+                         column=4,
+                         sticky="nse"
+                         )
+        
         self.table.configure(yscrollcommand=self.scroll.set)
         
         self.table.heading("#0", text="ID")
@@ -87,13 +103,18 @@ class Frame(tk.Frame):
         self.table.heading("#2", text="DESCRIPTION")
         self.table.heading("#3", text="STATUS")
         
-        self.table.insert("",
+        for task in tasks:
+            self.table.insert("",
                           0,
-                          text="1",
-                          values= ("Programar", "importante", "pending")
+                          text=task.id,
+                          values=(
+                              task.title,
+                              task.description,
+                              task.status
                           )
+            )
         
-        self.btn_update = tk.Button(self, text="Update")
+        self.btn_update = tk.Button(self, text="Update", command=self.update_task)
         self.btn_update.config(
             width=20,
             font=("Arial", 12, "bold"),
@@ -104,7 +125,7 @@ class Frame(tk.Frame):
         )
         self.btn_update.grid(row=4, column=0, padx=10, pady=10)
         
-        self.btn_status = tk.Button(self, text="change status")
+        self.btn_status = tk.Button(self, text="change status", command=self.change_status)
         self.btn_status.config(
             width=20,
             font=("Arial", 12, "bold"),
@@ -115,7 +136,7 @@ class Frame(tk.Frame):
         )
         self.btn_status.grid(row=4, column=1, padx=10, pady=10)
         
-        self.btn_delete = tk.Button(self, text="Delete")
+        self.btn_delete = tk.Button(self, text="Delete", command=self.delete_task)
         self.btn_delete.config(
             width=20,
             font=("Arial", 12, "bold"),
@@ -125,3 +146,101 @@ class Frame(tk.Frame):
             activebackground="#E15370"
         )
         self.btn_delete.grid(row=4, column=2, padx=10, pady=10)
+    
+    
+    def enable_fields(self):
+        self.btn_save.config(state="normal")
+        self.btn_cancel.config(state="normal")
+        self.btn_update.config(state="normal")
+        self.btn_delete.config(state="normal")
+        self.btn_status.config(state="normal")
+        self.btn_new.config(state="disabled")
+        
+        self.etr_title.config(state="normal")
+        self.etr_description.config(state="normal")
+    
+    
+    def disable_fields(self):
+        
+        self.id_pelicula = None
+        
+        self.svar_title.set("")
+        self.svar_description.set("")
+        
+        self.btn_save.config(state="disabled")
+        self.btn_cancel.config(state="disabled")
+        self.btn_new.config(state="normal")
+        
+        self.etr_title.config(state="disabled")
+        self.etr_description.config(state="disabled")
+        
+    
+    def create_Task(self):
+        
+        session = Session()
+        
+        task = TaskModel(
+            title = self.etr_title.get(),
+            description = self.etr_description.get()
+        )
+        
+        if self.id_pelicula == None:
+            TaskServices(session).create_task(task)
+        else:
+            TaskServices(session).update_task(task, self.id_pelicula)
+        
+        self.disable_fields()
+        self.show_table()
+        
+    
+    def update_task(self):
+        
+        try:
+            
+            self.id_pelicula = self.table.item(self.table.selection())['text']
+            title = self.table.item(self.table.selection())["values"][0]
+            description = self.table.item(self.table.selection())["values"][1]
+            
+            self.enable_fields()
+            self.etr_title.insert(0, title)
+            self.etr_description.insert(0, description)
+        except:
+            messagebox.showwarning("Data editing", "No record has been selected")
+        
+    
+    def delete_task(self):
+        
+            session = Session()
+            self.id_pelicula = self.table.item(self.table.selection())['text']
+            
+            if not self.id_pelicula:
+                messagebox.showwarning("Delete data", "No record has been selected")
+                
+            TaskServices(session).delete_task(self.id_pelicula)        
+
+            self.show_table()
+            self.id_pelicula = None
+            
+    
+    def change_status(self):
+        session = Session()
+        self.id_pelicula = self.table.item(self.table.selection())['text']
+        
+        if self.id_pelicula:
+            status = self.table.item(self.table.selection())["values"][2]
+            
+            new_status = "pending" if status == "completed" else "completed"
+            
+            TaskServices(session).change_status_task(new_status, self.id_pelicula)        
+
+            self.show_table()
+            self.id_pelicula = None
+            
+            return 
+            
+            
+        messagebox.showwarning("Change status", "No record has been selected")
+        
+            
+            
+            
