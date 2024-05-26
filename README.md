@@ -2,6 +2,8 @@
 
 This is a to-do list application. Basic CRUD using a graphical interface in Python.
 
+<image src="/src/static/img/open-task.png" alt="Descripción de la imagen">
+
 ### Features
 * Add new task
 * Edit task
